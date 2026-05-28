@@ -52,10 +52,18 @@ Download from the [releases page](https://github.com/matinsenpai/senpaiscanner/r
 | Windows | x86_64 | `senpaiscanner_windows_x86_64.zip` |
 
 **Linux / macOS:**
+
+stable release:
 ```bash
-curl -sL https://github.com/matinsenpai/senpaiscanner/releases/latest/download/senpaiscanner_linux_x86_64.tar.gz \
-  | tar xz && sudo mv senpaiscanner /usr/local/bin/
+
+curl -fsSL https://github.com/M-logique/SenPaiScanner/raw/refs/heads/main/install.sh | bash
 ```
+
+pre-release:
+```bash
+curl -fsSL https://github.com/M-logique/SenPaiScanner/raw/refs/heads/main/install.sh | bash -s -- --prerelease
+```
+
 
 **Windows (PowerShell):**
 ```powershell
