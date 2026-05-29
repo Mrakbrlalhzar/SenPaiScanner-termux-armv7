@@ -148,3 +148,39 @@ func TestSortBySpeed(t *testing.T) {
 		t.Errorf("first result after speed sort = %s, want 1.1.1.2", results[0].IP)
 	}
 }
+
+func TestSortByJitterPrefersHealthyResults(t *testing.T) {
+	results := []*Result{
+		{IP: net.ParseIP("1.1.1.1"), Latencies: []time.Duration{0, 0, 0, 0}},
+		{IP: net.ParseIP("1.1.1.2"), Latencies: []time.Duration{90 * time.Millisecond, 100 * time.Millisecond, 110 * time.Millisecond}, TLSOk: true},
+	}
+
+	Sort(results, SortByJitter)
+	if results[0].IP.String() != "1.1.1.2" {
+		t.Fatalf("first result after jitter sort = %s, want 1.1.1.2", results[0].IP)
+	}
+}
+
+func TestSortByLossPrefersPartialOverTotalFailure(t *testing.T) {
+	results := []*Result{
+		{IP: net.ParseIP("1.1.1.1"), Latencies: []time.Duration{0, 0, 0, 0}},
+		{IP: net.ParseIP("1.1.1.2"), Latencies: []time.Duration{100 * time.Millisecond, 0, 120 * time.Millisecond, 0}, TLSOk: true},
+	}
+
+	Sort(results, SortByLoss)
+	if results[0].IP.String() != "1.1.1.2" {
+		t.Fatalf("first result after loss sort = %s, want 1.1.1.2", results[0].IP)
+	}
+}
+
+func TestSortBySpeedKeepsHealthyResultsAheadOfUntestedFailures(t *testing.T) {
+	results := []*Result{
+		{IP: net.ParseIP("1.1.1.1"), Latencies: []time.Duration{0, 0, 0}, Throughput: 0},
+		{IP: net.ParseIP("1.1.1.2"), Latencies: []time.Duration{80 * time.Millisecond}, Throughput: 100 * 1024, TLSOk: true},
+	}
+
+	Sort(results, SortBySpeed)
+	if results[0].IP.String() != "1.1.1.2" {
+		t.Fatalf("first result after speed sort = %s, want 1.1.1.2", results[0].IP)
+	}
+}

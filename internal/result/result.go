@@ -135,40 +135,138 @@ const (
 	SortBySpeed
 )
 
+func sortRank(r *Result) int {
+	if r.IsHealthy() {
+		return 0
+	}
+	if r.Avg() > 0 || r.Loss() < 100 {
+		return 1
+	}
+	return 2
+}
+
+func cmpBool(a, b bool) int {
+	switch {
+	case a == b:
+		return 0
+	case a:
+		return -1
+	default:
+		return 1
+	}
+}
+
+func cmpDuration(a, b time.Duration) int {
+	switch {
+	case a < b:
+		return -1
+	case a > b:
+		return 1
+	default:
+		return 0
+	}
+}
+
+func cmpFloatAsc(a, b float64) int {
+	switch {
+	case a < b:
+		return -1
+	case a > b:
+		return 1
+	default:
+		return 0
+	}
+}
+
+func cmpFloatDesc(a, b float64) int {
+	return -cmpFloatAsc(a, b)
+}
+
+func cmpString(a, b string) int {
+	switch {
+	case a < b:
+		return -1
+	case a > b:
+		return 1
+	default:
+		return 0
+	}
+}
+
+func compareResults(a, b *Result, by SortBy) int {
+	if rankCmp := sortRank(a) - sortRank(b); rankCmp != 0 {
+		return rankCmp
+	}
+
+	switch by {
+	case SortByLoss:
+		if cmp := cmpFloatAsc(a.Loss(), b.Loss()); cmp != 0 {
+			return cmp
+		}
+		if cmp := cmpDuration(a.Avg(), b.Avg()); cmp != 0 {
+			return cmp
+		}
+		if cmp := cmpDuration(a.Jitter(), b.Jitter()); cmp != 0 {
+			return cmp
+		}
+	case SortByJitter:
+		if cmp := cmpDuration(a.Jitter(), b.Jitter()); cmp != 0 {
+			return cmp
+		}
+		if cmp := cmpFloatAsc(a.Loss(), b.Loss()); cmp != 0 {
+			return cmp
+		}
+		if cmp := cmpDuration(a.Avg(), b.Avg()); cmp != 0 {
+			return cmp
+		}
+	case SortByColo:
+		if cmp := cmpString(a.Colo, b.Colo); cmp != 0 {
+			return cmp
+		}
+		if cmp := cmpDuration(a.Avg(), b.Avg()); cmp != 0 {
+			return cmp
+		}
+		if cmp := cmpFloatAsc(a.Loss(), b.Loss()); cmp != 0 {
+			return cmp
+		}
+	case SortBySpeed:
+		if cmp := cmpFloatDesc(a.Throughput, b.Throughput); cmp != 0 {
+			return cmp
+		}
+		if cmp := cmpDuration(a.Avg(), b.Avg()); cmp != 0 {
+			return cmp
+		}
+		if cmp := cmpFloatAsc(a.Loss(), b.Loss()); cmp != 0 {
+			return cmp
+		}
+	default:
+		if cmp := cmpDuration(a.Avg(), b.Avg()); cmp != 0 {
+			return cmp
+		}
+		if cmp := cmpFloatAsc(a.Loss(), b.Loss()); cmp != 0 {
+			return cmp
+		}
+		if cmp := cmpDuration(a.Jitter(), b.Jitter()); cmp != 0 {
+			return cmp
+		}
+	}
+
+	if cmp := cmpBool(a.TLSOk, b.TLSOk); cmp != 0 {
+		return cmp
+	}
+	if cmp := cmpBool(a.WSOk, b.WSOk); cmp != 0 {
+		return cmp
+	}
+	if cmp := cmpString(a.IP.String(), b.IP.String()); cmp != 0 {
+		return cmp
+	}
+	return 0
+}
+
 // Sort reorders results in-place according to the given criterion (ascending).
 func Sort(results []*Result, by SortBy) {
-	sort.Slice(results, func(i, j int) bool {
-		a, b := results[i], results[j]
-		switch by {
-		case SortByLoss:
-			if a.Loss() != b.Loss() {
-				return a.Loss() < b.Loss()
-			}
-			return a.Avg() < b.Avg()
-		case SortByJitter:
-			return a.Jitter() < b.Jitter()
-		case SortByColo:
-			if a.Colo != b.Colo {
-				return a.Colo < b.Colo
-			}
-			return a.Avg() < b.Avg()
-		case SortBySpeed:
-			if a.Throughput != b.Throughput {
-				return a.Throughput > b.Throughput
-			}
-			return a.Avg() < b.Avg()
-		default: // SortByAvg
-			if a.Avg() != b.Avg() {
-				if a.Avg() == 0 {
-					return false
-				}
-				if b.Avg() == 0 {
-					return true
-				}
-				return a.Avg() < b.Avg()
-			}
-			return a.Loss() < b.Loss()
-		}
+	sort.SliceStable(results, func(i, j int) bool {
+		return compareResults(results[i], results[j], by) < 0
 	})
 }
 
