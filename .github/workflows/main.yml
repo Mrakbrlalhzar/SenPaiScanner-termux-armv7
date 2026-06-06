@@ -1,0 +1,61 @@
+name: Build for Termux (ARMv7)
+
+# زمان اجرا: اجرای دستی یا در زمان ساخت تگ جدید
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  GO_VERSION: '1.24'
+
+jobs:
+  build:
+    name: Build ARMv7 Binary
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      # نصب ابزارهای کراس-کامپایلر
+      - name: Install cross-compiler for ARMv7
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-linux-gnueabihf
+
+      - name: Build the binary for ARMv7
+        run: |
+          export GOOS=linux
+          export GOARCH=arm
+          export GOARM=7
+          export CC=arm-linux-gnueabihf-gcc
+          export CXX=arm-linux-gnueabihf-g++
+          export CGO_ENABLED=1
+
+          mkdir -p dist
+          go build -o dist/senpaiscanner-termux-armv7 -ldflags="-s -w" .
+
+      # آپلود فایل بیلدشده به GitHub Releases
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: dist/senpaiscanner-termux-armv7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ذخیره خروجی برای اجراهای دستی
+      - name: Upload Artifact (for manual runs)
+        uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: senpaiscanner-termux-armv7
+          path: dist/senpaiscanner-termux-armv7
+          retention-days: 7
